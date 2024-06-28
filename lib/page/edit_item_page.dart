@@ -58,7 +58,33 @@ class _EditItemPageState extends State<EditItemPage> {
     });
   }
 
+  Future<String?> _uploadImage(File imageFile) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('https://yourapiurl/upload-image'), // Replace with your image upload endpoint
+    );
+    request.files.add(await http.MultipartFile.fromPath('image', imageFile.path));
+
+    final response = await request.send();
+    if (response.statusCode == 200) {
+      final responseData = await http.Response.fromStream(response);
+      final data = jsonDecode(responseData.body);
+      return data['imageUrl']; // Adjust this based on your API response
+    } else {
+      return null;
+    }
+  }
+
   Future<void> _saveItem() async {
+    String? imageUrl = widget.imageUrl;
+    if (_imageFile != null) {
+      imageUrl = await _uploadImage(_imageFile!);
+    }
+
+    if (imageUrl == null) {
+      throw Exception('Failed to upload image');
+    }
+
     final url = Uri.parse('https://p6d0q4jz-8080.asse.devtunnels.ms/item/${widget.itemId}');
     final response = await http.put(
       url,
@@ -67,7 +93,7 @@ class _EditItemPageState extends State<EditItemPage> {
       },
       body: jsonEncode(<String, dynamic>{
         'itemName': _nameController.text,
-        'imageUrl': widget.imageUrl,
+        'imageUrl': imageUrl,
         'price': double.parse(_priceController.text),
         'totalQuantity': int.parse(_quantityController.text),
         'variant': _hasVariants ? _variants : null,
